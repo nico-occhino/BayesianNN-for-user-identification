@@ -5,10 +5,14 @@ Dataset facts (from README + Metadata.json):
     Videos      : 650 total, 43 users, avg 15.1 per user
     Resolution  : 256×128 px  (width × height) — pre-cropped lip region
     Duration    : avg 1.77s | min 0.53s | max 3.27s
-    Correct pwd : 250 videos (word = FLAG)
-    Wrong pwd   : 400 videos (word = any other)
+    Correct pwd : the word that appears MOST OFTEN in each user's folder
+                  (typically ~5 videos for the correct word, ~2 for others)
 
 Filename convention: VID_<YYYYMMDD>_<HHMMSS>_<WORD>.mp4
+
+NOTE: The correct password is NOT a fixed string across the dataset.
+It is determined per-user by frequency: the modal word in each user's
+folder is treated as the correct password for that user.
 """
 
 import os
@@ -16,11 +20,12 @@ import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from collections import Counter
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix
 from typing import Dict, List, Optional, Tuple
 
-# ── Ensure src/ is always importable ─────────────────────────────────────────
+# Ensure src/ is always importable
 _src_dir = os.path.dirname(os.path.abspath(__file__))
 if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
@@ -37,14 +42,28 @@ def parse_word_from_filename(filename: str) -> str:
     VID_20240425_123033_FLAG.mp4   → "FLAG"
     VID_20240425_123038_pillow.mp4 → "PILLOW"
     """
-    stem  = os.path.splitext(filename)[0]   # drop extension
+    stem  = os.path.splitext(filename)[0]
     parts = stem.split("_")
     return parts[-1].upper() if len(parts) >= 4 else "UNKNOWN"
 
 
-def is_correct_password(word: str) -> bool:
-    """FLAG is the correct password in BioVid."""
-    return word.upper() == "FLAG"
+def get_correct_word_for_user(video_files: List[str]) -> str:
+    """
+    Determines the correct password for a single user by word frequency.
+
+    The correct word is the modal word across that user's video files.
+    In BioVid this word typically appears in ~5 videos; other words
+    appear only ~2 times each.
+
+    Args:
+        video_files : list of .mp4 basenames for one user
+
+    Returns:
+        The modal word (uppercase) — i.e. the correct password for this user.
+    """
+    words = [parse_word_from_filename(f) for f in video_files]
+    most_common_word, _ = Counter(words).most_common(1)[0]
+    return most_common_word
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -58,19 +77,24 @@ def create_dataframe(
     """
     Builds a catalog DataFrame from the BioVid dataset directory.
 
+    The correct password is detected dynamically per user: the modal word
+    in each folder is labelled is_correct=True. This is the correct
+    behaviour — do NOT hardcode a fixed password string.
+
     Args:
         root_dir  : path to dataset root (one subfolder per user)
-        filter_by : None       → all 650 videos
-                    "correct"  → FLAG only  (250 videos)
-                    "wrong"    → non-FLAG   (400 videos)
+        filter_by : None      → all 650 videos
+                    "correct" → modal-word videos only  (~250)
+                    "wrong"   → non-modal-word videos   (~400)
 
     Returns:
         df            : DataFrame columns:
-                            path       — absolute path to .mp4
-                            label      — integer identity 0..N-1
-                            user       — username string
-                            word       — spoken word (uppercase)
-                            is_correct — True if word == FLAG
+                            path         — absolute path to .mp4
+                            label        — integer identity 0..N-1
+                            user         — username string
+                            word         — spoken word (uppercase)
+                            correct_word — the modal word for this user
+                            is_correct   — True if word == correct_word
         label_to_user : dict int → username
     """
     if not os.path.exists(root_dir):
@@ -98,14 +122,18 @@ def create_dataframe(
             print(f"  ⚠️  No .mp4 files in '{user_folder}' — skipping.")
             continue
 
+        # ── Determine this user's correct password dynamically ────────────
+        correct_word = get_correct_word_for_user(video_files)
+
         for video_file in video_files:
             word = parse_word_from_filename(video_file)
             data.append({
-                "path":       os.path.join(user_path, video_file),
-                "label":      label_code,
-                "user":       user_folder,
-                "word":       word,
-                "is_correct": is_correct_password(word),
+                "path":         os.path.join(user_path, video_file),
+                "label":        label_code,
+                "user":         user_folder,
+                "word":         word,
+                "correct_word": correct_word,
+                "is_correct":   word == correct_word,
             })
 
     if not data:
@@ -113,13 +141,23 @@ def create_dataframe(
 
     df = pd.DataFrame(data)
 
-    # ── Apply filter ──────────────────────────────────────────────────────────
+    # ── Sanity check: log per-user detected passwords ─────────────────────
+    pwd_summary = (
+        df.drop_duplicates("user")[["user", "correct_word"]]
+        .sort_values("user")
+    )
+    unique_pwds = pwd_summary["correct_word"].unique()
+    print(f"  Detected correct passwords across users: {sorted(unique_pwds)}")
+    if len(unique_pwds) == 1:
+        print(f"  ℹ️  All users share the same modal word: '{unique_pwds[0]}'")
+
+    # ── Apply filter ──────────────────────────────────────────────────────
     if filter_by == "correct":
         df = df[df["is_correct"]].reset_index(drop=True)
     elif filter_by == "wrong":
         df = df[~df["is_correct"]].reset_index(drop=True)
 
-    # ── Re-assign dense label codes after filtering ───────────────────────────
+    # ── Re-assign dense label codes after filtering ───────────────────────
     unique_users  = sorted(df["user"].unique())
     user_to_label = {u: i for i, u in enumerate(unique_users)}
     df["label"]   = df["user"].map(user_to_label)
@@ -127,10 +165,12 @@ def create_dataframe(
 
     n_correct = int(df["is_correct"].sum())
     n_wrong   = int((~df["is_correct"]).sum())
-    print(f"✓ Catalog ready: {len(df)} videos | "
-          f"{df['label'].nunique()} identities | "
-          f"avg {len(df)/df['label'].nunique():.1f} videos/user | "
-          f"correct={n_correct} wrong={n_wrong}")
+    print(
+        f"✓ Catalog ready: {len(df)} videos | "
+        f"{df['label'].nunique()} identities | "
+        f"avg {len(df)/df['label'].nunique():.1f} videos/user | "
+        f"correct={n_correct} wrong={n_wrong}"
+    )
 
     return df, label_to_user
 
@@ -154,8 +194,10 @@ def get_folds(
         train_df = df.iloc[train_idx].reset_index(drop=True)
         val_df   = df.iloc[val_idx].reset_index(drop=True)
         folds.append((train_df, val_df))
-        print(f"  Fold {fold_idx+1}: train={len(train_df)} | "
-              f"val={len(val_df)} | users in val={val_df['label'].nunique()}")
+        print(
+            f"  Fold {fold_idx+1}: train={len(train_df)} | "
+            f"val={len(val_df)} | users in val={val_df['label'].nunique()}"
+        )
     return folds
 
 
@@ -174,8 +216,10 @@ def verify_no_leak(train_df: pd.DataFrame, val_df: pd.DataFrame) -> None:
 
 def verify_class_balance(df: pd.DataFrame, split_name: str = "") -> None:
     counts = df.groupby("label").size()
-    print(f"  {split_name} class balance → "
-          f"min={counts.min()} max={counts.max()} mean={counts.mean():.1f}")
+    print(
+        f"  {split_name} class balance → "
+        f"min={counts.min()} max={counts.max()} mean={counts.mean():.1f}"
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -279,19 +323,19 @@ def plot_modality_comparison(
 
     Args:
         results : {
-            "audio":      {"mc_acc": 0.37, "eer": 0.07,
-                           "mc_acc_std": 0.02, "eer_std": 0.01},
+            "audio":      {"mc_acc": 0.28, "eer": 0.12,
+                           "mc_acc_std": 0.03, "eer_std": 0.02},
             "video":      {...},
             "multimodal": {...},
         }
     """
     os.makedirs(save_dir, exist_ok=True)
     modes   = list(results.keys())
-    accs    = [results[m]["mc_acc"]              for m in modes]
-    eers    = [results[m]["eer"]                 for m in modes]
-    acc_std = [results[m].get("mc_acc_std", 0)   for m in modes]
-    eer_std = [results[m].get("eer_std",    0)   for m in modes]
-    colors  = ["#4C72B0", "#DD8452", "#55A868",  "#C44E52"][:len(modes)]
+    accs    = [results[m]["mc_acc"]             for m in modes]
+    eers    = [results[m]["eer"]                for m in modes]
+    acc_std = [results[m].get("mc_acc_std", 0)  for m in modes]
+    eer_std = [results[m].get("eer_std",    0)  for m in modes]
+    colors  = ["#4C72B0", "#DD8452", "#55A868", "#C44E52"][:len(modes)]
 
     x = np.arange(len(modes))
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
@@ -312,6 +356,9 @@ def plot_modality_comparison(
     ax2.set_title("EER by Modality (lower is better)")
     for i, (v, s) in enumerate(zip(eers, eer_std)):
         ax2.text(i, v + s + 0.005, f"{v:.3f}", ha="center", fontsize=9)
+
+
+
 
     plt.tight_layout()
     path = os.path.join(save_dir, "modality_comparison.png")
