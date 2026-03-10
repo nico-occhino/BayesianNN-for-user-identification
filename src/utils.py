@@ -31,9 +31,7 @@ if _src_dir not in sys.path:
     sys.path.insert(0, _src_dir)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # FILENAME PARSING
-# ─────────────────────────────────────────────────────────────────────────────
 
 def parse_word_from_filename(filename: str) -> str:
     """
@@ -66,9 +64,7 @@ def get_correct_word_for_user(video_files: List[str]) -> str:
     return most_common_word
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # DATA DISCOVERY
-# ─────────────────────────────────────────────────────────────────────────────
 
 def create_dataframe(
     root_dir:  str,
@@ -78,8 +74,7 @@ def create_dataframe(
     Builds a catalog DataFrame from the BioVid dataset directory.
 
     The correct password is detected dynamically per user: the modal word
-    in each folder is labelled is_correct=True. This is the correct
-    behaviour — do NOT hardcode a fixed password string.
+    in each folder is labelled is_correct=True.
 
     Args:
         root_dir  : path to dataset root (one subfolder per user)
@@ -97,6 +92,7 @@ def create_dataframe(
                             is_correct   — True if word == correct_word
         label_to_user : dict int → username
     """
+
     if not os.path.exists(root_dir):
         raise FileNotFoundError(f"Data directory not found: '{root_dir}'")
 
@@ -122,7 +118,7 @@ def create_dataframe(
             print(f"  ⚠️  No .mp4 files in '{user_folder}' — skipping.")
             continue
 
-        # ── Determine this user's correct password dynamically ────────────
+        # Determine this user's correct password dynamically
         correct_word = get_correct_word_for_user(video_files)
 
         for video_file in video_files:
@@ -141,7 +137,7 @@ def create_dataframe(
 
     df = pd.DataFrame(data)
 
-    # ── Sanity check: log per-user detected passwords ─────────────────────
+    # Sanity check: log per-user detected passwords
     pwd_summary = (
         df.drop_duplicates("user")[["user", "correct_word"]]
         .sort_values("user")
@@ -151,7 +147,7 @@ def create_dataframe(
     if len(unique_pwds) == 1:
         print(f"  ℹ️  All users share the same modal word: '{unique_pwds[0]}'")
 
-    # ── Apply filter ──────────────────────────────────────────────────────
+    # Apply filter
     if filter_by == "correct":
         df = df[df["is_correct"]].reset_index(drop=True)
     elif filter_by == "wrong":
@@ -175,9 +171,7 @@ def create_dataframe(
     return df, label_to_user
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # STRATIFIED K-FOLD
-# ─────────────────────────────────────────────────────────────────────────────
 
 def get_folds(
     df:           pd.DataFrame,
@@ -201,9 +195,7 @@ def get_folds(
     return folds
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # SAFETY CHECKS
-# ─────────────────────────────────────────────────────────────────────────────
 
 def verify_no_leak(train_df: pd.DataFrame, val_df: pd.DataFrame) -> None:
     overlap = set(train_df["path"]) & set(val_df["path"])
@@ -222,9 +214,7 @@ def verify_class_balance(df: pd.DataFrame, split_name: str = "") -> None:
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # EVALUATION METRICS
-# ─────────────────────────────────────────────────────────────────────────────
 
 def compute_eer(labels: np.ndarray, scores: np.ndarray) -> float:
     """Equal Error Rate for a binary task."""
@@ -250,9 +240,7 @@ def compute_multiclass_eer(
     return float(np.mean(eers))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # VISUALISATION
-# ─────────────────────────────────────────────────────────────────────────────
 
 def plot_training_curves(
     train_losses: List[float],

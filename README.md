@@ -3,15 +3,6 @@
 
 ---
 
-## Results Summary
-
-| Experiment | Architecture | Params | MC Accuracy | EER |
-|---|---|---|---|---|
-| Audio GAP | Lightweight | ~153K | 0.2815 ± 0.032 | 11.89% |
-| Audio Paper | Spata et al. 2025 | ~25M | 0.8215 ± 0.028 | 1.10% |
-| Video GAP | Lightweight | ~153K | 0.8831 ± 0.029 | 0.61% |
-| **Multimodal** | **Fusion (GAP)** | **~307K** | **0.9138 ± 0.033** | **0.26%** |
-
 5-fold stratified cross-validation · 43 speakers · 650 videos · MC Dropout T=30
 
 ---
@@ -21,7 +12,7 @@
 ```
 biovid_project/
 ├── data/                   # ← NOT tracked by Git (too large)
-│   └── raw/                # BioVid video files go here locally
+│ 
 │
 ├── src/                    # ← Tracked — all training code
 │   ├── model.py            # Lightweight GAP + Paper-Exact architectures
