@@ -1,0 +1,78 @@
+{
+  "experiment": {
+    "mode": "audio",
+    "paper": true,
+    "filter": "all",
+    "arch_label": "PAPER (Spata et al. 2025, ~25M params)",
+    "mode_tag": "audio_paper"
+  },
+  "hyperparams": {
+    "epochs": 100,
+    "batch_size": 32,
+    "lr": 0.0001,
+    "weight_decay": 0.0001,
+    "dropout_p": 0.2,
+    "feature_dim": 128,
+    "mc_passes": 30,
+    "n_folds": 5,
+    "n_frames": null,
+    "n_classes": 43
+  },
+  "folds": [
+    {
+      "fold": 1,
+      "mc_acc": 0.7846153846153846,
+      "eer": 0.027135702786424954
+    },
+    {
+      "fold": 2,
+      "mc_acc": 0.8153846153846154,
+      "eer": 0.015379088251393556
+    },
+    {
+      "fold": 3,
+      "mc_acc": 0.8461538461538461,
+      "eer": 0.010006084813526217
+    },
+    {
+      "fold": 4,
+      "mc_acc": 0.8,
+      "eer": 0.011309578132722157
+    },
+    {
+      "fold": 5,
+      "mc_acc": 0.8461538461538461,
+      "eer": 0.013492522736983458
+    }
+  ],
+  "summary": {
+    "mean_mc_acc": 0.8184615384615384,
+    "std_mc_acc": 0.02461538461538461,
+    "mean_eer": 0.015464595344210066,
+    "std_eer": 0.006118343501310898
+  },
+  "files": {
+    "confusion_matrix": "confusion_matrix_all_folds.png",
+    "history_csvs": [
+      "history_fold1.csv",
+      "history_fold2.csv",
+      "history_fold3.csv",
+      "history_fold4.csv",
+      "history_fold5.csv"
+    ],
+    "prediction_csvs": [
+      "predictions_fold1.csv",
+      "predictions_fold2.csv",
+      "predictions_fold3.csv",
+      "predictions_fold4.csv",
+      "predictions_fold5.csv"
+    ],
+    "curve_pngs": [
+      "curves_fold1.png",
+      "curves_fold2.png",
+      "curves_fold3.png",
+      "curves_fold4.png",
+      "curves_fold5.png"
+    ]
+  }
+}

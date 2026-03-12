@@ -1,0 +1,16 @@
+BioVid Speaker Identification — AUDIO
+────────────────────────────────────────
+Epochs      : 100
+Batch size  : 32
+Feature dim : 128
+Dropout p   : 0.4
+MC passes   : 30
+────────────────────────────────────────
+Fold 1: MC acc=0.7846  EER=0.0271
+Fold 2: MC acc=0.8154  EER=0.0154
+Fold 3: MC acc=0.8462  EER=0.0100
+Fold 4: MC acc=0.8000  EER=0.0113
+Fold 5: MC acc=0.8462  EER=0.0135
+────────────────────────────────────────
+Mean MC accuracy : 0.8185 +/- 0.0246
+Mean EER         : 0.0155 +/- 0.0061

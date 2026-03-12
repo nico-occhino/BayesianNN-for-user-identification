@@ -1,0 +1,17 @@
+BioVid Speaker Identification — MULTIMODAL
+────────────────────────────────────────
+Epochs      : 200
+Batch size  : 16
+Feature dim : 128
+Dropout p   : 0.4
+MC passes   : 30
+N frames    : 16
+────────────────────────────────────────
+Fold 1: MC acc=0.9538  EER=0.0008
+Fold 2: MC acc=0.9615  EER=0.0013
+Fold 3: MC acc=0.9692  EER=0.0008
+Fold 4: MC acc=0.8923  EER=0.0022
+Fold 5: MC acc=0.9231  EER=0.0044
+────────────────────────────────────────
+Mean MC accuracy : 0.9400 +/- 0.0285
+Mean EER         : 0.0019 +/- 0.0013
