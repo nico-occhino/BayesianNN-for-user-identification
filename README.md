@@ -27,7 +27,7 @@ biovid_project/
 │   ├── video/
 │   └── multimodal/
 │
-├── dashboard/              # ← Tracked — Streamlit dashboard (Sisca)
+├── dashboard/              # ← Tracked — Streamlit dashboard 
 │   ├── overview_dashboard.py
 │   └── pages/
 │       ├── 1_Modality.py
@@ -119,5 +119,5 @@ At test time, dropout is kept active and T=30 stochastic forward passes are run 
 
 ## Authors
 
-- Nicolò — model architecture, training pipeline
-- Sisca — experimentation, Streamlit dashboard
+- Nicolò Carmelo Occhino 
+- Francesca Calcagno 
